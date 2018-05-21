@@ -234,6 +234,7 @@ void application::exec() {
    io_serv->run();
 
    shutdown(); /// perform synchronous shutdown
+   
    if (was_bad_alloc)
       throw boost::interprocess::bad_alloc();
 }
