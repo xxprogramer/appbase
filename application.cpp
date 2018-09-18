@@ -28,6 +28,9 @@ class application_impl {
       bfs::path               _logging_conf{"logging.json"};
 
       uint64_t                _version;
+
+      bool                    _can_daemonize = false;
+      bool                    _daemonize = false;
 };
 
 application::application()
@@ -59,6 +62,10 @@ void application::set_default_config_dir(const bfs::path& config_dir) {
 
 bfs::path application::get_logging_conf() const {
   return my->_logging_conf;
+}
+
+void application::allow_daemonization() {
+   my->_can_daemonize = true;
 }
 
 void application::startup() {
@@ -105,6 +112,12 @@ void application::set_program_options()
          ("config-dir", bpo::value<std::string>(), "Directory containing configuration files such as config.ini")
          ("config,c", bpo::value<std::string>()->default_value( "config.ini" ), "Configuration file name relative to config-dir")
          ("logconf,l", bpo::value<std::string>()->default_value( "logging.json" ), "Logging configuration file name/path for library users");
+
+#ifndef _WIN32
+   if(my->_can_daemonize)
+      app_cli_opts.add_options()
+         ("daemon", bpo::bool_switch(&my->_daemonize), "Detach from controlling terminal after successful startup.");
+#endif
 
    my->_cfg_options.add(app_cfg_opts);
    my->_app_options.add(app_cfg_opts);
@@ -220,6 +233,29 @@ void application::quit() {
 }
 
 void application::exec() {
+#ifndef _WIN32
+   if(my->_daemonize) {
+      std::cerr << "APPBASE:   Daemonizing..." << std::endl;
+      io_serv->notify_fork(boost::asio::io_service::fork_prepare);
+      pid_t f = fork();
+      if(f == -1)
+         BOOST_THROW_EXCEPTION(std::runtime_error("Failed to daemonize"));
+      else if(f) {
+         io_serv->notify_fork(boost::asio::io_service::fork_parent);
+         exit(0);
+      }
+      else {
+         setsid();
+         close(STDIN_FILENO);
+         close(STDOUT_FILENO);
+         close(STDERR_FILENO);
+         if(open("/dev/null", O_RDONLY) == -1 || open("/dev/null", O_WRONLY) == -1 || open("/dev/null", O_RDWR) == -1)
+            exit(1);
+         io_serv->notify_fork(boost::asio::io_service::fork_child);
+      }
+   }
+#endif
+
    std::shared_ptr<boost::asio::signal_set> sigint_set(new boost::asio::signal_set(*io_serv, SIGINT));
    sigint_set->async_wait([sigint_set,this](const boost::system::error_code& err, int num) {
      quit();

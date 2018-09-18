@@ -58,6 +58,10 @@ namespace appbase {
           * @return Logging configuration location from command line
           */
          bfs::path get_logging_conf() const;
+
+         /** @brief enable daemonization after all plugin's startup()s have completed
+          */
+         void allow_daemonization();
          /**
           * @brief Looks for the --plugin commandline / config option and calls initialize on those plugins
           *
