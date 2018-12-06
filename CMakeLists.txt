@@ -11,6 +11,7 @@ include( InstallDirectoryPermissions )
 file(GLOB HEADERS "include/appbase/*.hpp")
 
 find_package(Boost 1.60 REQUIRED COMPONENTS system filesystem program_options)
+find_package(Threads)
 
 if( APPLE )
   # Apple Specific Options Here
@@ -29,7 +30,7 @@ add_library( appbase
              ${HEADERS}
            )
 
-target_link_libraries( appbase Boost::boost ${Boost_LIBRARIES})
+target_link_libraries( appbase Boost::boost ${Boost_LIBRARIES} Threads::Threads)
 
 target_include_directories( appbase
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
