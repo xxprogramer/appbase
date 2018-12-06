@@ -10,18 +10,7 @@ include( InstallDirectoryPermissions )
 
 file(GLOB HEADERS "include/appbase/*.hpp")
 
-set(BOOST_COMPONENTS)
-list(APPEND BOOST_COMPONENTS thread
-                             date_time
-                             filesystem
-                             system
-                             chrono
-                             program_options
-                             unit_test_framework
-                             locale)
-
-find_package(Boost 1.60 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
-set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
+find_package(Boost 1.60 REQUIRED COMPONENTS system filesystem program_options)
 
 if( APPLE )
   # Apple Specific Options Here
@@ -40,10 +29,10 @@ add_library( appbase
              ${HEADERS}
            )
 
-target_link_libraries( appbase ${Boost_LIBRARIES})
+target_link_libraries( appbase Boost::boost ${Boost_LIBRARIES})
 
 target_include_directories( appbase
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" ${Boost_INCLUDE_DIR})
+                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 set_target_properties( appbase PROPERTIES PUBLIC_HEADER "${HEADERS}" CXX_STANDARD 14 CXX_EXTENSIONS OFF )
 
