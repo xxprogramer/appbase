@@ -197,12 +197,13 @@ namespace appbase {
           * Post func to run on io_service with given priority.
           *
           * @param priority can be appbase::priority::* constants or any int, larger ints run first
+          * @param desc description of task for debugging
           * @param func function to run on io_service
           * @return result of boost::asio::post
           */
          template <typename Func>
-         auto post( int priority, Func&& func ) {
-            return boost::asio::post(*io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
+         auto post( int priority, string desc, Func&& func ) {
+            return boost::asio::post(*io_serv, pri_queue.wrap(priority, std::move(desc), std::forward<Func>(func)));
          }
 
          /**
@@ -312,7 +313,7 @@ namespace appbase {
    void channel<Data,DispatchPolicy>::publish(int priority, const Data& data) {
       if (has_subscribers()) {
          // this will copy data into the lambda
-         app().post( priority, [this, data]() {
+         app().post( priority, "channel publish", [this, data]() {
             _signal(data);
          });
       }

@@ -5,6 +5,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/chrono.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -327,14 +329,28 @@ bool application::is_quiting() const {
    return my->_is_quiting;
 }
 
+auto log_time( const string& d, long long b, int priority) {
+   namespace bc = boost::chrono;
+   auto now = bc::duration_cast<bc::microseconds>( bc::system_clock::now().time_since_epoch() ).count();
+   auto time = now - b;
+   if( time > 5000 && b != 0) {
+      std::cerr << time << ' ' << d << " p: " << priority << std::endl;
+   }
+   return bc::duration_cast<bc::microseconds>( bc::system_clock::now().time_since_epoch() ).count();
+}
+
 void application::exec() {
    boost::asio::io_service::work work(*io_serv);
    (void)work;
    bool more = true;
+   int priority = 0;
+   string desc;
    while( more || io_serv->run_one() ) {
+//      auto now = log_time(desc, 0, 0);
       while( io_serv->poll_one() ) {}
-      // execute the highest priority item
-      more = pri_queue.execute_highest();
+//      now = log_time("poll", now, 0);
+      std::tie(more, priority, desc) = pri_queue.execute_highest();
+//      log_time(desc, now, priority);
    }
 
    shutdown(); /// perform synchronous shutdown

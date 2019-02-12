@@ -17,9 +17,9 @@ class execution_priority_queue : public boost::asio::execution_context
 public:
 
    template <typename Function>
-   void add(int priority, Function function)
+   void add(int priority, const string& desc, Function function)
    {
-      std::unique_ptr<queued_handler_base> handler(new queued_handler<Function>(priority, std::move(function)));
+      std::unique_ptr<queued_handler_base> handler(new queued_handler<Function>(priority, desc, std::move(function)));
 
       handlers_.push(std::move(handler));
    }
@@ -32,21 +32,27 @@ public:
       }
    }
 
-   bool execute_highest()
+   // more, priority, description
+   std::tuple<bool, int, string> execute_highest()
    {
+      int priority = 0;
+      string desc;
       if( !handlers_.empty() ) {
-         handlers_.top()->execute();
+         auto& h = handlers_.top();
+         priority = h->priority();
+         desc = h->description();
+         h->execute();
          handlers_.pop();
       }
 
-      return !handlers_.empty();
+      return { !handlers_.empty(), priority, std::move( desc ) };
    }
 
    class executor
    {
    public:
-      executor(execution_priority_queue& q, int p)
-            : context_(q), priority_(p)
+      executor(execution_priority_queue& q, int p, string desc)
+            : context_(q), priority_(p), desc_( std::move(desc) )
       {
       }
 
@@ -58,19 +64,19 @@ public:
       template <typename Function, typename Allocator>
       void dispatch(Function f, const Allocator&) const
       {
-         context_.add(priority_, std::move(f));
+         context_.add(priority_, desc_, std::move(f));
       }
 
       template <typename Function, typename Allocator>
       void post(Function f, const Allocator&) const
       {
-         context_.add(priority_, std::move(f));
+         context_.add(priority_, desc_, std::move(f));
       }
 
       template <typename Function, typename Allocator>
       void defer(Function f, const Allocator&) const
       {
-         context_.add(priority_, std::move(f));
+         context_.add(priority_, desc_, std::move(f));
       }
 
       void on_work_started() const noexcept {}
@@ -89,31 +95,32 @@ public:
    private:
       execution_priority_queue& context_;
       int priority_;
+      string desc_;
    };
 
    template <typename Function>
    boost::asio::executor_binder<Function, executor>
-   wrap(int priority, Function&& func)
+   wrap(int priority, string desc, Function&& func)
    {
-      return boost::asio::bind_executor( executor(*this, priority), std::forward<Function>(func) );
+      return boost::asio::bind_executor( executor(*this, priority, std::move( desc) ), std::forward<Function>(func) );
    }
 
 private:
    class queued_handler_base
    {
    public:
-      queued_handler_base(int p)
-            : priority_(p)
+      queued_handler_base(int p, const string& desc)
+            : priority_(p), desc_(desc)
       {
       }
 
-      virtual ~queued_handler_base()
-      {
-      }
+      virtual ~queued_handler_base() = default;
 
       virtual void execute() = 0;
 
       int priority() const { return priority_; }
+
+      string description() const { return desc_; }
 
       friend bool operator<(const std::unique_ptr<queued_handler_base>& a,
                             const std::unique_ptr<queued_handler_base>& b) noexcept
@@ -123,14 +130,15 @@ private:
 
    private:
       int priority_;
+      string desc_;
    };
 
    template <typename Function>
    class queued_handler : public queued_handler_base
    {
    public:
-      queued_handler(int p, Function f)
-            : queued_handler_base(p), function_(std::move(f))
+      queued_handler(int p, const string& desc, Function f)
+            : queued_handler_base(p, desc), function_(std::move(f))
       {
       }
 
