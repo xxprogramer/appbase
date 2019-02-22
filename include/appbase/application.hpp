@@ -202,8 +202,8 @@ namespace appbase {
           * @return result of boost::asio::post
           */
          template <typename Func>
-         auto post( int priority, string desc, Func&& func ) {
-            return boost::asio::post(*io_serv, pri_queue.wrap(priority, std::move(desc), std::forward<Func>(func)));
+         auto post( int priority, const string& desc, Func&& func ) {
+            return boost::asio::post(*io_serv, pri_queue.wrap(priority, desc, std::forward<Func>(func)));
          }
 
          /**

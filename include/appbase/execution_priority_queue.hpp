@@ -51,8 +51,8 @@ public:
    class executor
    {
    public:
-      executor(execution_priority_queue& q, int p, string desc)
-            : context_(q), priority_(p), desc_( std::move(desc) )
+      executor(execution_priority_queue& q, int p, const string& desc)
+            : context_(q), priority_(p), desc_( desc )
       {
       }
 
@@ -100,9 +100,9 @@ public:
 
    template <typename Function>
    boost::asio::executor_binder<Function, executor>
-   wrap(int priority, string desc, Function&& func)
+   wrap(int priority, const string& desc, Function&& func)
    {
-      return boost::asio::bind_executor( executor(*this, priority, std::move( desc) ), std::forward<Function>(func) );
+      return boost::asio::bind_executor( executor( *this, priority, desc ), std::forward<Function>(func) );
    }
 
 private:
