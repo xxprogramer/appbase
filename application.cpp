@@ -118,7 +118,7 @@ void application::startup() {
 void application::start_sighup_handler() {
    std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(*io_serv, SIGHUP));
    sighup_set->async_wait([sighup_set, this](const boost::system::error_code& err, int /*num*/) {
-      app().post(priority::low, [err, this]() {
+      app().post(priority::low, "sighup", [err, this]() {
          if(!err) {
             sighup_callback();
             for( auto plugin : initialized_plugins ) {
@@ -346,11 +346,11 @@ void application::exec() {
    int priority = 0;
    string desc;
    while( more || io_serv->run_one() ) {
-//      auto now = log_time(desc, 0, 0);
+      auto now = log_time(desc, 0, 0);
       while( io_serv->poll_one() ) {}
-//      now = log_time("poll", now, 0);
+      now = log_time("poll", now, 0);
       std::tie(more, priority, desc) = pri_queue.execute_highest();
-//      log_time(desc, now, priority);
+      log_time(desc, now, priority);
    }
 
    shutdown(); /// perform synchronous shutdown
