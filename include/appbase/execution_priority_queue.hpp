@@ -45,7 +45,7 @@ public:
          handlers_.pop();
       }
 
-      return { !handlers_.empty(), priority, std::move( desc ) };
+      return std::tuple<bool, int, string>{ !handlers_.empty(), priority, std::move( desc ) };
    }
 
    class executor
