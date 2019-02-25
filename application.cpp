@@ -329,12 +329,12 @@ bool application::is_quiting() const {
    return my->_is_quiting;
 }
 
-auto log_time( const string& d, long long b, int priority) {
+auto log_time( const string& desc, long long start, int priority) {
    namespace bc = boost::chrono;
    auto now = bc::duration_cast<bc::microseconds>( bc::system_clock::now().time_since_epoch() ).count();
-   auto time = now - b;
-   if( time > 5000 && b != 0) {
-      std::cerr << time << ' ' << d << " p: " << priority << std::endl;
+   auto time = now - start;
+   if( time > 5000 && start != 0) {
+      std::cerr << time << ' ' << desc << " p: " << priority << std::endl;
    }
    return bc::duration_cast<bc::microseconds>( bc::system_clock::now().time_since_epoch() ).count();
 }
@@ -346,11 +346,12 @@ void application::exec() {
    int priority = 0;
    string desc;
    while( more || io_serv->run_one() ) {
-      auto now = log_time(desc, 0, 0);
+//      auto now = log_time(desc, 0, 0);
       while( io_serv->poll_one() ) {}
-      now = log_time("poll", now, 0);
-      std::tie(more, priority, desc) = pri_queue.execute_highest();
-      log_time(desc, now, priority);
+//      now = log_time("poll_one", now, 0);
+//      std::tie(more, priority, desc) = pri_queue.execute_highest();
+      std::tie(more, std::ignore, std::ignore) = pri_queue.execute_highest();
+//      log_time(desc, now, priority);
    }
 
    shutdown(); /// perform synchronous shutdown
