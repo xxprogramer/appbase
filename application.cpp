@@ -331,17 +331,17 @@ bool application::is_quiting() const {
 
 //#define APPBASE_LOG_TIME
 #ifdef APPBASE_LOG_TIME
-void log_time( const char* desc, long long& start, int priority ) {
+long long log_time( const char* desc, long long start, int priority ) {
    namespace bc = boost::chrono;
    auto now = bc::duration_cast<bc::microseconds>( bc::system_clock::now().time_since_epoch() ).count();
    auto time = now - start;
    if( time > 5000 && start != 0) {
       std::cerr << time << ' ' << desc << " p: " << priority << std::endl;
    }
-   start = bc::duration_cast<bc::microseconds>( bc::system_clock::now().time_since_epoch() ).count();
+   return bc::duration_cast<bc::microseconds>( bc::system_clock::now().time_since_epoch() ).count();
 }
 #else
-void log_time( const char*, long long&, int ) {}
+long long log_time( const char*, long long, int ) {}
 #endif
 
 void application::exec() {
@@ -350,11 +350,10 @@ void application::exec() {
    bool more = true;
    int priority = 0;
    string desc;
-   long long start_time = 0;
    while( more || io_serv->run_one() ) {
-      log_time("", start_time, 0);
+      long long start_time = log_time("", 0, 0);
       while( io_serv->poll_one() ) {}
-      log_time("poll_one", start_time, 0);
+      start_time = log_time("poll_one", start_time, 0);
       std::tie(more, priority, desc) = pri_queue.execute_highest();
       log_time(desc.c_str(), start_time, priority);
    }
