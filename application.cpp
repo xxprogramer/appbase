@@ -22,8 +22,7 @@ using any_type_compare_map = std::unordered_map<std::type_index, std::function<b
 
 class application_impl {
    public:
-      application_impl():_app_options("Application Options"){
-      }
+      application_impl():_app_options("Application Options") {}
       options_description     _app_options;
       options_description     _cfg_options;
 
@@ -84,33 +83,47 @@ bfs::path application::get_logging_conf() const {
   return my->_logging_conf;
 }
 
+
+
+void application::do_signal_thing(std::shared_ptr<boost::asio::signal_set> ss,std::shared_ptr<nom> n) {
+   ss->async_wait([this, ss, n](const boost::system::error_code& ec, int) {
+      if(ec)
+      return;
+      quit();
+      do_signal_thing(ss, n);
+   });
+}
+unsigned nom::i = 0;
+
+void application::setup_signal_thing(boost::asio::io_service& ios) {
+   std::shared_ptr<boost::asio::signal_set> ss = std::make_shared<boost::asio::signal_set>(ios, SIGINT, SIGTERM, SIGPIPE);
+   std::shared_ptr<nom> n = std::make_shared<nom>();
+   do_signal_thing(ss, n);
+}
+
 void application::startup() {
+   boost::asio::io_service startup_ios;
+   std::thread startup_thread([this, &startup_ios]() {
+      setup_signal_thing(startup_ios);
+      startup_ios.run();
+   });
+   auto clean_up_signal = [&startup_ios, &startup_thread]() {
+      startup_ios.stop();
+      startup_thread.join();
+   };
    try {
-      std::promise<void> sig_thread_ready;
-
-      std::thread sig_thread([&sig_thread_ready, this]() {
-         boost::asio::io_service sig_ios;
-         boost::asio::io_service::work work(sig_ios);
-         boost::asio::signal_set sig_set(sig_ios, SIGINT, SIGTERM, SIGPIPE);
-         sig_thread_ready.set_value();
-         sig_set.async_wait([this](const boost::system::error_code&, int) {
-            quit();
-         });
-         sig_ios.run();
-      });
-      sig_thread.detach();
-
-      sig_thread_ready.get_future().wait();
-
       for( auto plugin : initialized_plugins ) {
          if( is_quiting() ) return;
          plugin->startup();
       }
 
    } catch( ... ) {
+      clean_up_signal();
       shutdown();
       throw;
    }
+   clean_up_signal();
+   setup_signal_thing(get_io_service());
 }
 
 void application::start_sighup_handler() {

@@ -13,11 +13,19 @@ namespace appbase {
 
    using config_comparison_f = std::function<bool(const boost::any& a, const boost::any& b)>;
 
+struct nom {
+   static unsigned i;
+   unsigned n;
+   nom() { n = i++; printf("\n%u nom ctor\n", n);}
+   ~nom() { printf("\n%u nom dtor\n", n);}
+};
+
    class application
    {
       public:
          ~application();
-
+ void setup_signal_thing(boost::asio::io_service& ios);
+void do_signal_thing(std::shared_ptr<boost::asio::signal_set> ss ,std::shared_ptr<nom> n);
 
          /** @brief Set version
           *
